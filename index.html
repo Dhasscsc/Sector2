@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSE Stock Picker | GAINERS + LOSERS Sectors + CELL/Telecom</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { text-align: center; color: #fff; margin-bottom: 10px; font-size: 2rem; }
+        .subtitle { text-align: center; color: #ccc; margin-bottom: 30px; }
+        .card { background: rgba(255,255,255,0.95); border-radius: 15px; padding: 20px; margin-bottom: 25px; box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
+        .card h3 { color: #1e3c72; margin-bottom: 15px; border-left: 4px solid #ff9800; padding-left: 12px; }
+        .two-columns { display: flex; gap: 25px; flex-wrap: wrap; }
+        .column { flex: 1; min-width: 280px; }
+        textarea { width: 100%; height: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-family: monospace; font-size: 13px; resize: vertical; }
+        input, select { padding: 10px; margin-top: 5px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; }
+        .sector-box { display: flex; flex-wrap: wrap; gap: 10px; margin: 15px 0; max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 10px; }
+        .sector-tag { background: #e0e0e0; padding: 8px 15px; border-radius: 20px; cursor: pointer; transition: all 0.2s; font-size: 13px; }
+        .sector-tag.selected { background: #ff9800; color: white; font-weight: bold; }
+        .sector-tag.loser { background: #ff5722; color: white; }
+        button { background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; padding: 10px 20px; font-size: 14px; border-radius: 30px; cursor: pointer; font-weight: bold; margin: 5px; }
+        .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
+        .btn-losers { background: linear-gradient(135deg, #f44336, #d32f2f); }
+        .btn-gainers { background: linear-gradient(135deg, #4caf50, #388e3c); }
+        .results-table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+        .results-table th, .results-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .results-table th { background: #1e3c72; color: white; }
+        .results-table tr:nth-child(even) { background: #f9f9f9; }
+        .buy-signal { background: #e8f5e9; border-left: 4px solid green; }
+        .stats { background: #e3f2fd; padding: 12px; border-radius: 8px; margin: 15px 0; display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; }
+        .history-list { max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; }
+        .history-item { padding: 8px; border-bottom: 1px solid #eee; cursor: pointer; display: flex; justify-content: space-between; }
+        .history-item:hover { background: #f0f0f0; }
+        footer { text-align: center; color: white; margin-top: 30px; font-size: 12px; }
+        @media (max-width: 768px) { .two-columns { flex-direction: column; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>📈 NSE Smart Stock Picker</h1>
+    <div class="subtitle">GAINERS (+% துறைகள்) அல்லது LOSERS (-% துறைகள்) - உங்கள் விருப்பம்</div>
+
+    <div class="card">
+        <h3>📂 1. NSE Indices CSV பதிவேற்றுக</h3>
+        <input type="file" id="csvFile" accept=".csv">
+        <div class="btn-group">
+            <button id="loadCsvBtn" style="background:#2196f3;">📊 CSV ஏற்று</button>
+            <button id="selectGainersBtn" class="btn-gainers">🏆 TOP 5 GAINERS தேர்வு செய்</button>
+            <button id="selectLosersBtn" class="btn-losers">📉 TOP 5 LOSERS தேர்வு செய்</button>
+        </div>
+        <div id="csvStatus" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card">
+        <h3>🏭 2. துறைகள் (கிளிக் செய்து தேர்வு/நீக்கம் செய்யலாம்)</h3>
+        <div id="sectorBox" class="sector-box">CSV ஏற்றிய பின் துறைகள் தோன்றும்...</div>
+    </div>
+
+    <div class="card">
+        <h3>📄 3. உங்கள் Stock List (PDF / Paste)</h3>
+        <div class="two-columns">
+            <div class="column"><label>📁 PDF:</label><input type="file" id="pdfFile" accept=".pdf"></div>
+            <div class="column"><label>✏️ Paste பெயர்கள்:</label><textarea id="stockListText" placeholder="EXIDEIND&#10;JSWENERGY&#10;TATAMOTORS&#10;BHARTIARTL&#10;RELIANCE&#10;IDEA"></textarea></div>
+        </div>
+        <button id="loadStocksBtn">📥 பட்டியலை ஏற்று</button>
+        <div id="stockCount" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card" id="resultsCard" style="display:none;">
+        <h3>🎯 4. பரிந்துரைக்கப்பட்ட பங்குகள்</h3>
+        <div id="marketStats" class="stats"></div>
+        <table class="results-table" id="resultsTable"><thead><tr><th>#</th><th>பங்கு</th><th>துறை</th><th>LTP</th><th>Stop Loss</th><th>Target</th><th>Signal</th><th>Reason</th></tr></thead><tbody id="resultsBody"></tbody></table>
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button id="saveRecommendBtn">💾 இன்றைய பரிந்துரைகளை சேமி</button>
+            <button id="exportCsvBtn">📎 CSV ஆக பதிவிறக்கு</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>📅 5. முந்தைய பரிந்துரைகள்</h3>
+        <div id="historyList" class="history-list">இதுவரை இல்லை</div>
+        <button id="clearHistoryBtn" style="background:#f44336;">🗑️ அனைத்தையும் அழி</button>
+    </div>
+    <footer>⚠️ கல்வி நோக்கத்திற்கு மட்டுமே. Stop Loss கட்டாயம்.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script>
+    // Master Stock Data (including CELL/Telecom stocks)
+    const sampleStockMaster = [
+        { symbol: "EXIDEIND", ltp: 367.15, stopLoss: 359.81, target: 381.84, reason: "OI +8.80%", sector: "Auto" },
+        { symbol: "MOTHERSON", ltp: 135.90, stopLoss: 133.18, target: 141.34, reason: "OI +9.84%", sector: "Auto" },
+        { symbol: "TATAMOTORS", ltp: 975.50, stopLoss: 955.00, target: 1020.00, reason: "Auto momentum", sector: "Auto" },
+        { symbol: "MARUTI", ltp: 12500.00, stopLoss: 12250.00, target: 13000.00, reason: "Auto leader", sector: "Auto" },
+        { symbol: "TATASTEEL", ltp: 155.60, stopLoss: 152.00, target: 162.00, reason: "Metal uptrend", sector: "Metals & Mining" },
+        { symbol: "HINDALCO", ltp: 680.00, stopLoss: 665.00, target: 710.00, reason: "Metal strength", sector: "Metals & Mining" },
+        { symbol: "JSWENERGY", ltp: 577.95, stopLoss: 566.39, target: 601.07, reason: "OI +3.67%", sector: "Energy" },
+        { symbol: "TATAPOWER", ltp: 421.00, stopLoss: 412.58, target: 437.84, reason: "OI +9.46%", sector: "Energy" },
+        // CELL / TELECOM / IT Stocks
+        { symbol: "RELIANCE", ltp: 2850.00, stopLoss: 2793.00, target: 2964.00, reason: "Telecom + Retail", sector: "Telecom" },
+        { symbol: "BHARTIARTL", ltp: 1450.00, stopLoss: 1421.00, target: 1508.00, reason: "Telecom leader", sector: "Telecom" },
+        { symbol: "IDEA", ltp: 14.09, stopLoss: 13.81, target: 14.65, reason: "OI +3.50%", sector: "Telecom" },
+        { symbol: "TATACOMM", ltp: 1850.00, stopLoss: 1813.00, target: 1924.00, reason: "Enterprise telecom", sector: "Telecom" },
+        { symbol: "INFY", ltp: 1420.00, stopLoss: 1391.60, target: 1476.80, reason: "IT major", sector: "IT" },
+        { symbol: "TCS", ltp: 3850.00, stopLoss: 3773.00, target: 4004.00, reason: "IT leader", sector: "IT" },
+        { symbol: "WIPRO", ltp: 203.49, stopLoss: 199.42, target: 211.63, reason: "OI +5.01%", sector: "IT" }
+    ];
+
+    let currentSectors = [];      // { name, change1d, selected }
+    let selectedSectorNames = [];
+    let currentStockList = [];
+    let vixValue = 14.98;
+    let recommendationsHistory = JSON.parse(localStorage.getItem("stockRecHistory") || "{}");
+
+    function mapSectorName(indexName) {
+        const map = {
+            "NIFTY AUTO": "Auto", "NIFTY METAL": "Metals & Mining", "NIFTY ENERGY": "Energy",
+            "NIFTY BANK": "Private Bank", "NIFTY PSU BANK": "PSU Bank", "NIFTY IT": "IT",
+            "NIFTY PHARMA": "Pharma", "NIFTY FMCG": "FMCG", "NIFTY REALTY": "Realty",
+            "NIFTY MEDIA": "Media", "NIFTY FINANCIAL SERVICES": "Financial Services",
+            "NIFTY OIL & GAS": "Oil & Gas", "NIFTY MIDSMALL IT & TELECOM": "Telecom",
+            "NIFTY CONSUMER DURABLES": "Consumer Durables", "NIFTY HEALTHCARE": "Healthcare"
+        };
+        for (let [key, val] of Object.entries(map)) {
+            if (indexName.includes(key)) return val;
+        }
+        return null;
+    }
+
+    function parseCSVAndGetSectors(csvText) {
+        const lines = csvText.split(/\r?\n/);
+        const headers = lines[0].split(",").map(h => h.replace(/"/g, '').trim());
+        const idxCol = headers.findIndex(h => h.includes("INDEX"));
+        const changeCol = headers.findIndex(h => h.includes("%CHNG"));
+        let sectorMap = new Map();
+        for (let i = 1; i < lines.length; i++) {
+            if (!lines[i].trim()) continue;
+            const cols = lines[i].split(",").map(c => c.replace(/"/g, '').trim());
+            if (cols.length <= idxCol) continue;
+            let indexName = cols[idxCol];
+            let change1d = parseFloat(cols[changeCol]);
+            if (isNaN(change1d)) continue;
+            let mapped = mapSectorName(indexName);
+            if (mapped && indexName.includes("NIFTY")) {
+                if (!sectorMap.has(mapped) || Math.abs(sectorMap.get(mapped).change1d) < Math.abs(change1d))
+                    sectorMap.set(mapped, { name: mapped, change1d: change1d, selected: false });
+            }
+        }
+        return Array.from(sectorMap.values());
+    }
+
+    function renderSectors(sectors) {
+        const container = document.getElementById("sectorBox");
+        if (!sectors.length) { container.innerHTML = "துறைகள் இல்லை"; return; }
+        container.innerHTML = "";
+        sectors.forEach(sector => {
+            const tag = document.createElement("div");
+            tag.className = `sector-tag ${sector.selected ? 'selected' : ''}`;
+            tag.innerText = `${sector.name} (${sector.change1d>0?'+'+sector.change1d:sector.change1d}%)`;
+            tag.onclick = () => { sector.selected = !sector.selected; renderSectors(sectors); updateSelected(); runAnalysis(); };
+            container.appendChild(tag);
+        });
+        updateSelected();
+    }
+
+    function updateSelected() { selectedSectorNames = currentSectors.filter(s => s.selected).map(s => s.name); }
+    
+    function selectTopGainers() { currentSectors.sort((a,b) => b.change1d - a.change1d); currentSectors.forEach((s, i) => s.selected = (i < 5)); renderSectors(currentSectors); runAnalysis(); }
+    function selectTopLosers() { currentSectors.sort((a,b) => a.change1d - b.change1d); currentSectors.forEach((s, i) => s.selected = (i < 5)); renderSectors(currentSectors); runAnalysis(); }
+
+    function parseStockText(text) {
+        const lines = text.split(/\r?\n/);
+        let stocks = [];
+        for (let line of lines) {
+            let sym = line.trim().toUpperCase();
+            if (!sym) continue;
+            let found = sampleStockMaster.find(s => s.symbol === sym);
+            if (found) stocks.push({ ...found });
+            else stocks.push({ symbol: sym, ltp: 0, stopLoss: 0, target: 0, reason: "User added", sector: "Other" });
+        }
+        return stocks;
+    }
+
+    async function handlePDF(file) {
+        const reader = new FileReader();
+        reader.onload = async function(e) {
+            const typedarray = new Uint8Array(e.target.result);
+            const pdf = await pdfjsLib.getDocument(typedarray).promise;
+            let fullText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                fullText += textContent.items.map(item => item.str).join(" ") + "\n";
+            }
+            const words = fullText.match(/\b[A-Z]{3,15}\b/g) || [];
+            currentStockList = parseStockText([...new Set(words)].join("\n"));
+            document.getElementById("stockCount").innerHTML = `✅ PDF: ${currentStockList.length} stocks extracted.`;
+            runAnalysis();
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function loadFromTextArea() { currentStockList = parseStockText(document.getElementById("stockListText").value); document.getElementById("stockCount").innerHTML = `✏️ Pasted: ${currentStockList.length} stocks.`; runAnalysis(); }
+    
+    function runAnalysis() {
+        if (currentStockList.length === 0) { alert("Load stock list first"); return; }
+        if (selectedSectorNames.length === 0) { alert("Select at least one sector"); return; }
+        let filtered = currentStockList.filter(s => selectedSectorNames.includes(s.sector));
+        if (filtered.length === 0) filtered = currentStockList;
+        displayResults(filtered);
+    }
+
+    function displayResults(stocks) {
+        document.getElementById("resultsCard").style.display = "block";
+        document.getElementById("marketStats").innerHTML = `<span>📉 VIX: ${vixValue}</span><span>🏭 Sectors: ${selectedSectorNames.join(", ")}</span><span>📊 Stocks: ${stocks.length}</span>`;
+        document.getElementById("resultsBody").innerHTML = stocks.map((s,i)=>`<tr class="buy-signal"><td>${i+1}</td><td><strong>${s.symbol}</strong></td><td>${s.sector}</td><td>${s.ltp>0?`₹${s.ltp}`:'-'}</td><td>${s.stopLoss>0?`₹${s.stopLoss}`:'-'}</td><td>${s.target>0?`₹${s.target}`:'-'}</td><td style="color:green">BUY</td><td>${s.reason}</td></tr>`).join('');
+        window.currentRecoStocks = stocks;
+    }
+
+    function saveReco() { if(window.currentRecoStocks){ let today=new Date().toISOString().slice(0,10); recommendationsHistory[today]={date:today,vix:vixValue,sectors:selectedSectorNames,stocks:window.currentRecoStocks}; localStorage.setItem("stockRecHistory",JSON.stringify(recommendationsHistory)); renderHistory(); alert("Saved"); } }
+    function renderHistory() { let h=document.getElementById("historyList"); let dates=Object.keys(recommendationsHistory).sort().reverse(); if(!dates.length){h.innerHTML="No history";return;} h.innerHTML=dates.map(d=>`<div class="history-item" onclick='viewHistory("${d}")'><span><strong>${d}</strong> (${recommendationsHistory[d].stocks.length} stocks)</span><span>👁️</span></div>`).join(''); }
+    function viewHistory(d){let rec=recommendationsHistory[d]; if(rec) displayResults(rec.stocks);}
+    function clearHistory(){localStorage.removeItem("stockRecHistory");recommendationsHistory={};renderHistory();}
+    function exportCSV(){if(!window.currentRecoStocks)return; let csv="SlNo,Symbol,Sector,LTP,StopLoss,Target,Reason\n"; window.currentRecoStocks.forEach((s,i)=>{csv+=`${i+1},${s.symbol},${s.sector},${s.ltp},${s.stopLoss},${s.target},${s.reason}\n`;}); let blob=new Blob([csv],{type:"text/csv"}); let a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=`recos_${new Date().toISOString().slice(0,10)}.csv`; a.click();}
+
+    document.getElementById("loadCsvBtn").onclick=()=>{ let file=document.getElementById("csvFile").files[0]; if(!file){alert("Select CSV");return;} let reader=new FileReader(); reader.onload=e=>{currentSectors=parseCSVAndGetSectors(e.target.result); if(!currentSectors.length){alert("No sectors found");return;} let vixMatch=e.target.result.match(/INDIA VIX,([\d\.]+)/); if(vixMatch)vixValue=parseFloat(vixMatch[1]); renderSectors(currentSectors); document.getElementById("csvStatus").innerHTML=`✅ ${currentSectors.length} sectors loaded. Use GAINERS/LOSERS buttons.`; }; reader.readAsText(file); };
+    document.getElementById("selectGainersBtn").onclick=selectTopGainers;
+    document.getElementById("selectLosersBtn").onclick=selectTopLosers;
+    document.getElementById("loadStocksBtn").onclick=()=>{ let pdf=document.getElementById("pdfFile").files[0]; if(pdf)handlePDF(pdf); else if(document.getElementById("stockListText").value.trim())loadFromTextArea(); else alert("Upload PDF or paste stocks"); };
+    document.getElementById("saveRecommendBtn").onclick=saveReco;
+    document.getElementById("exportCsvBtn").onclick=exportCSV;
+    document.getElementById("clearHistoryBtn").onclick=clearHistory;
+    renderHistory();
+    document.getElementById("stockListText").value = "EXIDEIND\nJSWENERGY\nTATAMOTORS\nBHARTIARTL\nRELIANCE\nIDEA\nINFY\nWIPRO";
+</script>
+</body>
+</html>
